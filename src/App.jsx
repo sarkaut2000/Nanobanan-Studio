@@ -36,6 +36,30 @@ const COLOR_GRADES = ["Warm & Satt","Kalt & Blau","Entsättigt","High Contrast",
 const TABS = { SINGLE: "single", STORY: "story" };
 
 const API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY || "";
+const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_API_KEY || "";
+
+async function generateImageWithGoogleImagen(prompt) {
+  if (!GOOGLE_API_KEY) throw new Error("Kein Google API-Key konfiguriert. Bitte VITE_GOOGLE_API_KEY in .env setzen.");
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${GOOGLE_API_KEY}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        instances: [{ prompt }],
+        parameters: { sampleCount: 1 }
+      })
+    }
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error?.message || `Google API Fehler ${res.status}`);
+  }
+  const data = await res.json();
+  const b64 = data?.predictions?.[0]?.bytesBase64Encoded;
+  if (!b64) throw new Error("Kein Bild in der API-Antwort.");
+  return `data:image/png;base64,${b64}`;
+}
 
 async function callClaude(system, user, maxTokens = 1500) {
   if (!API_KEY) throw new Error("Kein API-Key konfiguriert. Bitte VITE_ANTHROPIC_API_KEY in .env setzen.");
@@ -48,7 +72,7 @@ async function callClaude(system, user, maxTokens = 1500) {
       "anthropic-dangerous-direct-browser-access": "true"
     },
     body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-sonnet-4-6",
       max_tokens: maxTokens,
       system,
       messages: [{ role: "user", content: user }]
@@ -424,15 +448,17 @@ function SingleMode() {
       const user = `Idee: ${idea}${style?`, Stil: ${style}`:""}${mood?`, Stimmung: ${mood}`:""}${lighting?`, Licht: ${lighting}`:""}${camera?`, Kamera: ${camera}`:""}${cameraAngle?`, Kamerawinkel: ${cameraAngle}`:""}`;
       const p = await callClaude(sys, user, 800);
       setPrompt(p.trim()); setPhase("prompt");
-    } catch { setError("Fehler beim Generieren."); }
+    } catch(e) { setError("Fehler beim Generieren: " + (e?.message || e)); }
     setLoading(false);
   }
 
   async function doGenerateImage() {
-    setLoading(true);
-    setImageUrl(`https://picsum.photos/seed/${Date.now()}/768/512`);
-    await new Promise(r=>setTimeout(r,900));
-    setPhase("image"); setLoading(false);
+    setLoading(true); setError("");
+    try {
+      const url = await generateImageWithGoogleImagen(prompt);
+      setImageUrl(url); setPhase("image");
+    } catch(e) { setError("Fehler beim Bild generieren: " + (e?.message || e)); }
+    setLoading(false);
   }
 
   async function doGenerateVideo() {
