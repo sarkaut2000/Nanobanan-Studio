@@ -3,7 +3,24 @@ import { useState } from "react";
 const STYLES = ["Photorealistisch","Cinematic","Digital Art","Oil Painting","Watercolor","Cyberpunk","Fantasy","Anime","Noir","Surrealist","Minimalist","Comic Book"];
 const MOODS  = ["Episch","Dramatisch","Mystisch","Romantisch","Dunkel","Verspielt","Spannend","Melancholisch","Triumphierend","Bedrohlich","Friedlich","Chaotisch"];
 const LIGHTING = ["Golden Hour","Neon Lights","Mondlicht","Studio","Natürliches Tageslicht","Dramatische Schatten","Blaue Stunde","Kerzenlicht","Gegenlicht"];
-const CAMERA = ["Weitwinkel","Nahaufnahme","Vogelperspektive","Froschperspektive","Over-the-Shoulder","Panorama","Dutch Angle"];
+const CAMERA = [
+  // Einstellungsgrößen
+  "Extreme Close-Up","Close-Up","Medium Close-Up","Medium Shot","Amerikanische Einstellung","Medium Long Shot","Long Shot","Extreme Long Shot","Establishing Shot",
+  // Kameraperspektiven
+  "Augenhöhe","Vogelperspektive","Froschperspektive","Draufsicht (Top Down)","Low Angle","High Angle","Dutch Angle","Over-the-Shoulder","POV","Schulterperspektive",
+  // Objektive & Brennweiten
+  "8mm Fisheye","14mm Ultra-Weitwinkel","24mm Weitwinkel","35mm Normal","50mm Standard","85mm Portrait","135mm Tele","200mm Tele","400mm Super-Tele","Makro","Tilt-Shift",
+  // Bildformat & Komposition
+  "Weitwinkel","Nahaufnahme","Panorama","Widescreen 2.39:1","16:9","4:3","Quadratisch 1:1","Vertikal 9:16",
+  // Tiefenschärfe & Fokus
+  "Geringe Tiefenschärfe","Große Tiefenschärfe","Bokeh","Selektiver Fokus","Schärfenverlauf","Rack Focus",
+  // Kamerabewegungen
+  "Statisch","Tracking Shot","Dolly Zoom","Handkamera","Steadicam","Aerial Drohne","Kranshot","Zoom In","Zoom Out",
+  // Belichtungstechniken
+  "Langzeitbelichtung","Slow Motion","High Speed","Doppelbelichtung",
+  // Stilistische Effekte
+  "Silhouette","Spiegelbild","Gegenlicht (Backlight)","Lens Flare","Vignette","Unschärfe"
+];
 const COLOR_GRADES = ["Warm & Satt","Kalt & Blau","Entsättigt","High Contrast","Pastell","Monochrom","Vintage","Teal & Orange"];
 
 const TABS = { SINGLE: "single", STORY: "story" };
