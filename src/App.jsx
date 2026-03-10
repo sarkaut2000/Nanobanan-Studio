@@ -21,6 +21,16 @@ const CAMERA = [
   // Stilistische Effekte
   "Silhouette","Spiegelbild","Gegenlicht (Backlight)","Lens Flare","Vignette","Unschärfe"
 ];
+const CAMERA_ANGLES = [
+  // Klassische Winkel
+  "Augenhöhe","Vogelperspektive","Froschperspektive","Draufsicht (Top Down)","Untersicht",
+  // Neigungswinkel
+  "Dutch Angle (geneigt)","Schräg von oben","Schräg von unten",
+  // Spezielle Winkel
+  "Over-the-Shoulder","POV (Ich-Perspektive)","Worm's Eye View","God's Eye View",
+  // Distanz-Kombis
+  "Aerial / Drohne","Bodennahe Perspektive","Umkreisend (Orbit)",
+];
 const COLOR_GRADES = ["Warm & Satt","Kalt & Blau","Entsättigt","High Contrast","Pastell","Monochrom","Vintage","Teal & Orange"];
 
 const TABS = { SINGLE: "single", STORY: "story" };
@@ -184,6 +194,7 @@ function StoryMode() {
   const [mood, setMood] = useState("");
   const [lighting, setLighting] = useState("");
   const [camera, setCamera] = useState("");
+  const [cameraAngle, setCameraAngle] = useState("");
   const [colorGrade, setColorGrade] = useState("");
   const [sceneCount, setSceneCount] = useState(5);
   const [scenes, setScenes] = useState([]);
@@ -219,7 +230,7 @@ Antworte NUR mit validem JSON ohne Markdown-Backticks:
   async function generateScenePrompt(idx) {
     const scene = scenes[idx];
     const sys = `Du bist ein NanoBanana-Prompt-Experte. Erstelle einen detaillierten englischen Bild-Prompt. Antworte NUR mit dem Prompt-Text.`;
-    const user = `Szene ${idx+1}: ${scene.title}\n${scene.description}\nStil:${style||"Cinematic"}, Mood:${mood||"Dramatisch"}, Light:${lighting||"Golden Hour"}, Cam:${camera||"Weitwinkel"}, Color:${colorGrade||"High Contrast"}`;
+    const user = `Szene ${idx+1}: ${scene.title}\n${scene.description}\nStil:${style||"Cinematic"}, Mood:${mood||"Dramatisch"}, Light:${lighting||"Golden Hour"}, Cam:${camera||"Weitwinkel"}, Angle:${cameraAngle||"Augenhöhe"}, Color:${colorGrade||"High Contrast"}`;
     const p = await callClaude(sys, user, 600);
     setScenes(prev=>prev.map((s,i)=>i===idx?{...s,prompt:p.trim()}:s));
   }
@@ -267,6 +278,13 @@ Antworte NUR mit validem JSON ohne Markdown-Backticks:
             </div>
           </div>
         ))}
+      </div>
+
+      <div style={{marginTop:"18px"}}>
+        <p style={{color:"#67e8f9",fontSize:"11px",letterSpacing:"2px",marginBottom:"9px"}}>KAMERAWINKEL</p>
+        <div style={{display:"flex",flexWrap:"wrap",gap:"5px"}}>
+          {CAMERA_ANGLES.map(a=><Tag key={a} label={a} selected={cameraAngle===a} onClick={()=>setCameraAngle(cameraAngle===a?"":a)} color="cyan" />)}
+        </div>
       </div>
 
       <div style={{marginTop:"18px"}}>
@@ -383,6 +401,7 @@ function SingleMode() {
   const [mood, setMood] = useState("");
   const [lighting, setLighting] = useState("");
   const [camera, setCamera] = useState("");
+  const [cameraAngle, setCameraAngle] = useState("");
   const [prompt, setPrompt] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [loading, setLoading] = useState(false);
@@ -402,7 +421,7 @@ function SingleMode() {
     setLoading(true); setError("");
     try {
       const sys = `Du bist ein NanoBanana-Prompt-Experte. Erstelle einen detaillierten englischen Bild-Prompt. Antworte NUR mit dem Prompt-Text.`;
-      const user = `Idee: ${idea}${style?`, Stil: ${style}`:""}${mood?`, Stimmung: ${mood}`:""}${lighting?`, Licht: ${lighting}`:""}${camera?`, Kamera: ${camera}`:""}`;
+      const user = `Idee: ${idea}${style?`, Stil: ${style}`:""}${mood?`, Stimmung: ${mood}`:""}${lighting?`, Licht: ${lighting}`:""}${camera?`, Kamera: ${camera}`:""}${cameraAngle?`, Kamerawinkel: ${cameraAngle}`:""}`;
       const p = await callClaude(sys, user, 800);
       setPrompt(p.trim()); setPhase("prompt");
     } catch { setError("Fehler beim Generieren."); }
@@ -471,6 +490,12 @@ function SingleMode() {
                 </div>
               </div>
             ))}
+          </div>
+          <div style={{marginTop:"16px"}}>
+            <p style={{color:"#67e8f9",fontSize:"11px",letterSpacing:"2px",marginBottom:"8px"}}>KAMERAWINKEL</p>
+            <div style={{display:"flex",flexWrap:"wrap",gap:"5px"}}>
+              {CAMERA_ANGLES.map(a=><Tag key={a} label={a} selected={cameraAngle===a} onClick={()=>setCameraAngle(cameraAngle===a?"":a)} color="cyan" />)}
+            </div>
           </div>
           {error&&<p style={{color:"#fca5a5",fontSize:"13px",marginTop:"12px"}}>⚠️ {error}</p>}
           <button onClick={doGeneratePrompt} disabled={!idea.trim()||loading} style={{
@@ -544,7 +569,7 @@ function SingleMode() {
           </div>
           <div style={{display:"flex",gap:"9px"}}>
             <button style={{flex:1,padding:"14px",background:"linear-gradient(135deg,#be185d,#db2777)",border:"none",borderRadius:"12px",color:"#fff",fontSize:"14px",fontWeight:"700",cursor:"pointer",boxShadow:"0 6px 20px rgba(190,24,93,0.38)"}}>⬇️ Herunterladen</button>
-            <button onClick={()=>{setPhase("idea");setIdea("");setPrompt("");setImageUrl("");setVideoProgress(0);setStyle("");setMood("");setLighting("");setCamera("");}} style={{flex:1,padding:"14px",background:"transparent",border:"1px solid rgba(192,132,252,0.28)",borderRadius:"12px",color:"#a78bfa",fontSize:"14px",cursor:"pointer"}}>🆕 Neues Projekt</button>
+            <button onClick={()=>{setPhase("idea");setIdea("");setPrompt("");setImageUrl("");setVideoProgress(0);setStyle("");setMood("");setLighting("");setCamera("");setCameraAngle("");}} style={{flex:1,padding:"14px",background:"transparent",border:"1px solid rgba(192,132,252,0.28)",borderRadius:"12px",color:"#a78bfa",fontSize:"14px",cursor:"pointer"}}>🆕 Neues Projekt</button>
           </div>
         </Card>
       )}
