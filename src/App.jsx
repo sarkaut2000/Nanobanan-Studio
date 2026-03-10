@@ -8,10 +8,16 @@ const COLOR_GRADES = ["Warm & Satt","Kalt & Blau","Entsättigt","High Contrast",
 
 const TABS = { SINGLE: "single", STORY: "story" };
 
-async function callClaude(system, user, maxTokens = 1500) {
+async function callClaude(system, user, maxTokens = 1500, apiKey = "") {
+  const headers = { "Content-Type": "application/json" };
+  if (apiKey) {
+    headers["x-api-key"] = apiKey;
+    headers["anthropic-version"] = "2023-06-01";
+    headers["anthropic-dangerous-direct-browser-access"] = "true";
+  }
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify({
       model: "claude-sonnet-4-20250514",
       max_tokens: maxTokens,
@@ -20,7 +26,26 @@ async function callClaude(system, user, maxTokens = 1500) {
     })
   });
   const data = await res.json();
+  if (data.error) throw new Error(data.error.message || "Claude API Fehler");
   return data.content?.map(b => b.text || "").join("") || "";
+}
+
+async function callGemini(system, user, maxTokens = 1500, apiKey = "") {
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: system }] },
+        contents: [{ role: "user", parts: [{ text: user }] }],
+        generationConfig: { maxOutputTokens: maxTokens }
+      })
+    }
+  );
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message || "Gemini API Fehler");
+  return data.candidates?.[0]?.content?.parts?.map(p => p.text || "").join("") || "";
 }
 
 function Tag({ label, selected, onClick, color = "purple" }) {
@@ -64,6 +89,109 @@ function Card({ children, accent="purple" }) {
       borderRadius:"20px",padding:"34px",
       boxShadow:`0 20px 60px ${glows[accent]||glows.purple}`
     }}>{children}</div>
+  );
+}
+
+// ── SETTINGS PANEL ───────────────────────────────────────────────────────────
+function SettingsPanel({ aiModel, setAiModel, claudeKey, setClaudeKey, geminiKey, setGeminiKey, onClose }) {
+  const [localClaudeKey, setLocalClaudeKey] = useState(claudeKey);
+  const [localGeminiKey, setLocalGeminiKey] = useState(geminiKey);
+  const [saved, setSaved] = useState(false);
+
+  function handleSave() {
+    setClaudeKey(localClaudeKey);
+    setGeminiKey(localGeminiKey);
+    localStorage.setItem("nb_claude_key", localClaudeKey);
+    localStorage.setItem("nb_gemini_key", localGeminiKey);
+    localStorage.setItem("nb_model", aiModel);
+    setSaved(true);
+    setTimeout(() => { setSaved(false); onClose(); }, 900);
+  }
+
+  const inputStyle = {
+    width:"100%", padding:"11px 14px", borderRadius:"10px",
+    background:"rgba(0,0,0,0.5)", border:"1px solid rgba(124,58,237,0.3)",
+    color:"#e8d5ff", fontSize:"13px", fontFamily:"monospace", outline:"none",
+    boxSizing:"border-box"
+  };
+
+  return (
+    <div style={{
+      background:"linear-gradient(135deg,rgba(10,0,28,0.97),rgba(5,0,20,0.98))",
+      border:"1px solid rgba(124,58,237,0.3)", borderRadius:"18px",
+      padding:"28px", marginBottom:"24px",
+      boxShadow:"0 20px 60px rgba(124,58,237,0.2)"
+    }}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"22px"}}>
+        <h3 style={{color:"#c084fc",fontSize:"16px",fontWeight:"800",margin:0}}>⚙️ KI-Modell & API-Keys</h3>
+        <button onClick={onClose} style={{background:"transparent",border:"none",color:"#6b7280",fontSize:"18px",cursor:"pointer",lineHeight:1}}>✕</button>
+      </div>
+
+      {/* Model Selector */}
+      <p style={{color:"#9ca3af",fontSize:"11px",letterSpacing:"2px",marginBottom:"10px"}}>MODELL WÄHLEN</p>
+      <div style={{display:"flex",gap:"10px",marginBottom:"24px"}}>
+        {[
+          { id:"claude", label:"Claude (Anthropic)", icon:"🤖", color:"#a855f7", border:"rgba(168,85,247,0.4)", glow:"rgba(168,85,247,0.25)" },
+          { id:"gemini", label:"Gemini (Google)",    icon:"✨", color:"#34d399", border:"rgba(52,211,153,0.4)", glow:"rgba(52,211,153,0.2)" },
+        ].map(m => (
+          <button key={m.id} onClick={() => { setAiModel(m.id); localStorage.setItem("nb_model", m.id); }} style={{
+            flex:1, padding:"14px 10px",
+            background:aiModel===m.id?`linear-gradient(135deg,${m.glow},transparent)`:"rgba(0,0,0,0.3)",
+            border:`2px solid ${aiModel===m.id?m.border:"rgba(255,255,255,0.06)"}`,
+            borderRadius:"12px", color:aiModel===m.id?m.color:"#6b7280",
+            fontSize:"13px", fontWeight:aiModel===m.id?"700":"400",
+            cursor:"pointer", transition:"all 0.2s",
+            boxShadow:aiModel===m.id?`0 4px 16px ${m.glow}`:"none"
+          }}>
+            <div style={{fontSize:"22px",marginBottom:"4px"}}>{m.icon}</div>
+            {m.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Claude Key */}
+      <div style={{marginBottom:"16px", opacity: aiModel==="claude"?1:0.45, transition:"opacity 0.2s"}}>
+        <p style={{color:"#a78bfa",fontSize:"11px",letterSpacing:"2px",marginBottom:"8px"}}>CLAUDE API KEY</p>
+        <input
+          type="password"
+          placeholder="sk-ant-api03-…"
+          value={localClaudeKey}
+          onChange={e => setLocalClaudeKey(e.target.value)}
+          style={{...inputStyle, borderColor: aiModel==="claude"?"rgba(168,85,247,0.4)":"rgba(124,58,237,0.15)"}}
+        />
+        <p style={{color:"#4b5563",fontSize:"11px",marginTop:"5px"}}>
+          Erhältlich auf{" "}
+          <span style={{color:"#7c3aed"}}>console.anthropic.com</span>
+        </p>
+      </div>
+
+      {/* Gemini Key */}
+      <div style={{marginBottom:"22px", opacity: aiModel==="gemini"?1:0.45, transition:"opacity 0.2s"}}>
+        <p style={{color:"#6ee7b7",fontSize:"11px",letterSpacing:"2px",marginBottom:"8px"}}>GOOGLE GEMINI API KEY</p>
+        <input
+          type="password"
+          placeholder="AIzaSy…"
+          value={localGeminiKey}
+          onChange={e => setLocalGeminiKey(e.target.value)}
+          style={{...inputStyle, borderColor: aiModel==="gemini"?"rgba(52,211,153,0.4)":"rgba(52,211,153,0.15)"}}
+        />
+        <p style={{color:"#4b5563",fontSize:"11px",marginTop:"5px"}}>
+          Erhältlich auf{" "}
+          <span style={{color:"#059669"}}>aistudio.google.com/app/apikey</span>
+        </p>
+      </div>
+
+      <button onClick={handleSave} style={{
+        width:"100%", padding:"13px",
+        background:saved?"linear-gradient(135deg,#065f46,#059669)":"linear-gradient(135deg,#7c3aed,#a855f7)",
+        border:"none", borderRadius:"11px", color:"#fff",
+        fontSize:"14px", fontWeight:"700", cursor:"pointer",
+        boxShadow:saved?"0 6px 20px rgba(5,150,105,0.4)":"0 6px 20px rgba(168,85,247,0.35)",
+        transition:"all 0.3s"
+      }}>
+        {saved ? "✓ Gespeichert!" : "💾 Speichern"}
+      </button>
+    </div>
   );
 }
 
@@ -148,7 +276,7 @@ function SceneCard({ scene, idx, onGeneratePrompt, onEditPrompt }) {
 }
 
 // ── STORY MODE ───────────────────────────────────────────────────────────────
-function StoryMode() {
+function StoryMode({ callAI }) {
   const [storyPhase, setStoryPhase] = useState("input");
   const [script, setScript] = useState("");
   const [style, setStyle] = useState("");
@@ -173,7 +301,7 @@ function StoryMode() {
       const sys = `Du bist ein Experte für visuelle Storyboards. Analysiere das Drehbuch und erstelle exakt ${sceneCount} visuelle Szenen.
 Antworte NUR mit validem JSON ohne Markdown-Backticks:
 {"scenes":[{"title":"Kurzer Titel","description":"Detaillierte visuelle Beschreibung (2-3 Sätze): was ist zu sehen, Charaktere, Umgebung, Lichtstimmung, Aktion"}]}`;
-      const raw = await callClaude(sys,
+      const raw = await callAI(sys,
         `Drehbuch:\n${script}\nGlobaler Stil: ${style||"Cinematic"}, Stimmung: ${mood||"Dramatisch"}`, 2500);
       setProgress(80); setStatusMsg("Szenen werden aufgebaut…");
       const clean = raw.replace(/```json|```/g,"").trim();
@@ -182,7 +310,7 @@ Antworte NUR mit validem JSON ohne Markdown-Backticks:
       setProgress(100);
       setTimeout(()=>{setStoryPhase("scenes");setLoading(false);},400);
     } catch(e) {
-      setError("Fehler beim Analysieren. JSON-Parsing fehlgeschlagen – bitte erneut versuchen.");
+      setError(`Fehler beim Analysieren: ${e.message || "Bitte erneut versuchen."}`);
       setLoading(false);
     }
   }
@@ -191,7 +319,7 @@ Antworte NUR mit validem JSON ohne Markdown-Backticks:
     const scene = scenes[idx];
     const sys = `Du bist ein NanoBanana-Prompt-Experte. Erstelle einen detaillierten englischen Bild-Prompt. Antworte NUR mit dem Prompt-Text.`;
     const user = `Szene ${idx+1}: ${scene.title}\n${scene.description}\nStil:${style||"Cinematic"}, Mood:${mood||"Dramatisch"}, Light:${lighting||"Golden Hour"}, Cam:${camera||"Weitwinkel"}, Color:${colorGrade||"High Contrast"}`;
-    const p = await callClaude(sys, user, 600);
+    const p = await callAI(sys, user, 600);
     setScenes(prev=>prev.map((s,i)=>i===idx?{...s,prompt:p.trim()}:s));
   }
 
@@ -347,7 +475,7 @@ Antworte NUR mit validem JSON ohne Markdown-Backticks:
 }
 
 // ── SINGLE MODE ──────────────────────────────────────────────────────────────
-function SingleMode() {
+function SingleMode({ callAI }) {
   const [phase, setPhase] = useState("idea");
   const [idea, setIdea] = useState("");
   const [style, setStyle] = useState("");
@@ -374,9 +502,9 @@ function SingleMode() {
     try {
       const sys = `Du bist ein NanoBanana-Prompt-Experte. Erstelle einen detaillierten englischen Bild-Prompt. Antworte NUR mit dem Prompt-Text.`;
       const user = `Idee: ${idea}${style?`, Stil: ${style}`:""}${mood?`, Stimmung: ${mood}`:""}${lighting?`, Licht: ${lighting}`:""}${camera?`, Kamera: ${camera}`:""}`;
-      const p = await callClaude(sys, user, 800);
+      const p = await callAI(sys, user, 800);
       setPrompt(p.trim()); setPhase("prompt");
-    } catch { setError("Fehler beim Generieren."); }
+    } catch(e) { setError(`Fehler beim Generieren: ${e.message}`); }
     setLoading(false);
   }
 
@@ -526,6 +654,19 @@ function SingleMode() {
 // ── APP SHELL ────────────────────────────────────────────────────────────────
 export default function App() {
   const [tab, setTab] = useState(TABS.SINGLE);
+  const [aiModel, setAiModel] = useState(() => localStorage.getItem("nb_model") || "claude");
+  const [claudeKey, setClaudeKey] = useState(() => localStorage.getItem("nb_claude_key") || "");
+  const [geminiKey, setGeminiKey] = useState(() => localStorage.getItem("nb_gemini_key") || "");
+  const [showSettings, setShowSettings] = useState(false);
+
+  async function callAI(system, user, maxTokens = 1500) {
+    if (aiModel === "gemini") return callGemini(system, user, maxTokens, geminiKey);
+    return callClaude(system, user, maxTokens, claudeKey);
+  }
+
+  const modelBadge = aiModel === "gemini"
+    ? { label: "Gemini", color: "#34d399", bg: "rgba(52,211,153,0.12)", border: "rgba(52,211,153,0.3)" }
+    : { label: "Claude", color: "#a855f7", bg: "rgba(168,85,247,0.12)", border: "rgba(168,85,247,0.3)" };
 
   return (
     <div style={{
@@ -541,7 +682,7 @@ export default function App() {
         @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
         @keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
         *{box-sizing:border-box}
-        textarea,button{font-family:inherit}
+        textarea,button,input{font-family:inherit}
         ::-webkit-scrollbar{width:4px}
         ::-webkit-scrollbar-thumb{background:#7c3aed44;border-radius:2px}
       `}</style>
@@ -549,7 +690,7 @@ export default function App() {
       <div style={{position:"relative",zIndex:1,maxWidth:"900px",margin:"0 auto",padding:"38px 20px 70px"}}>
 
         {/* Header */}
-        <div style={{textAlign:"center",marginBottom:"38px"}}>
+        <div style={{textAlign:"center",marginBottom:"28px"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:"12px",marginBottom:"10px"}}>
             <span style={{fontSize:"30px"}}>🍌</span>
             <h1 style={{fontSize:"clamp(24px,5vw,40px)",fontWeight:"900",margin:0,background:"linear-gradient(90deg,#c084fc,#f0abfc,#e879f9,#a855f7)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",letterSpacing:"-1px"}}>
@@ -557,8 +698,40 @@ export default function App() {
             </h1>
             <span style={{fontSize:"30px"}}>🍌</span>
           </div>
-          <p style={{color:"#4c1d95",fontSize:"11px",letterSpacing:"4px",textTransform:"uppercase",margin:0}}>KI-Powered Creative Suite</p>
+          <p style={{color:"#4c1d95",fontSize:"11px",letterSpacing:"4px",textTransform:"uppercase",margin:"0 0 14px"}}>KI-Powered Creative Suite</p>
+
+          {/* Model badge + settings button */}
+          <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:"10px"}}>
+            <span style={{
+              fontSize:"12px",padding:"4px 12px",borderRadius:"20px",
+              background:modelBadge.bg, border:`1px solid ${modelBadge.border}`,
+              color:modelBadge.color, fontWeight:"600"
+            }}>
+              {aiModel === "gemini" ? "✨" : "🤖"} {modelBadge.label}
+            </span>
+            <button onClick={() => setShowSettings(s => !s)} style={{
+              padding:"5px 14px",fontSize:"12px",
+              background:showSettings?"rgba(124,58,237,0.25)":"rgba(255,255,255,0.04)",
+              border:"1px solid rgba(124,58,237,0.28)",borderRadius:"20px",
+              color:"#a78bfa",cursor:"pointer",transition:"all 0.2s"
+            }}>
+              ⚙️ {showSettings ? "Schließen" : "Einstellungen"}
+            </button>
+          </div>
         </div>
+
+        {/* Settings Panel */}
+        {showSettings && (
+          <SettingsPanel
+            aiModel={aiModel}
+            setAiModel={setAiModel}
+            claudeKey={claudeKey}
+            setClaudeKey={setClaudeKey}
+            geminiKey={geminiKey}
+            setGeminiKey={setGeminiKey}
+            onClose={() => setShowSettings(false)}
+          />
+        )}
 
         {/* Tab Bar */}
         <div style={{
@@ -593,11 +766,11 @@ export default function App() {
 
         {/* Content */}
         <div style={{animation:"fadeIn 0.3s ease"}} key={tab}>
-          {tab===TABS.SINGLE?<SingleMode/>:<StoryMode/>}
+          {tab===TABS.SINGLE?<SingleMode callAI={callAI}/>:<StoryMode callAI={callAI}/>}
         </div>
 
         <p style={{textAlign:"center",color:"#1a0035",fontSize:"11px",marginTop:"50px",letterSpacing:"2px"}}>
-          POWERED BY CLAUDE AI × NANOBANANA 🍌
+          POWERED BY {aiModel === "gemini" ? "GEMINI AI" : "CLAUDE AI"} × NANOBANANA 🍌
         </p>
       </div>
     </div>
