@@ -48,7 +48,7 @@ async function callClaude(system, user, maxTokens = 1500) {
       "anthropic-dangerous-direct-browser-access": "true"
     },
     body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-sonnet-4-6",
       max_tokens: maxTokens,
       system,
       messages: [{ role: "user", content: user }]
@@ -424,7 +424,7 @@ function SingleMode() {
       const user = `Idee: ${idea}${style?`, Stil: ${style}`:""}${mood?`, Stimmung: ${mood}`:""}${lighting?`, Licht: ${lighting}`:""}${camera?`, Kamera: ${camera}`:""}${cameraAngle?`, Kamerawinkel: ${cameraAngle}`:""}`;
       const p = await callClaude(sys, user, 800);
       setPrompt(p.trim()); setPhase("prompt");
-    } catch { setError("Fehler beim Generieren."); }
+    } catch(e) { setError("Fehler beim Generieren: " + (e?.message || e)); }
     setLoading(false);
   }
 
