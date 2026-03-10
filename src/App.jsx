@@ -3,7 +3,16 @@ import { useState } from "react";
 const STYLES = ["Photorealistisch","Cinematic","Digital Art","Oil Painting","Watercolor","Cyberpunk","Fantasy","Anime","Noir","Surrealist","Minimalist","Comic Book"];
 const MOODS  = ["Episch","Dramatisch","Mystisch","Romantisch","Dunkel","Verspielt","Spannend","Melancholisch","Triumphierend","Bedrohlich","Friedlich","Chaotisch"];
 const LIGHTING = ["Golden Hour","Neon Lights","Mondlicht","Studio","Natürliches Tageslicht","Dramatische Schatten","Blaue Stunde","Kerzenlicht","Gegenlicht"];
-const CAMERA = ["Weitwinkel","Nahaufnahme","Vogelperspektive","Froschperspektive","Over-the-Shoulder","Panorama","Dutch Angle"];
+const CAMERA = [
+  // Perspektiven
+  "Weitwinkel","Nahaufnahme","Vogelperspektive","Froschperspektive","Over-the-Shoulder","Panorama","Dutch Angle",
+  // Objektive & Brennweiten
+  "50mm Portrait","85mm Bokeh","24mm Weitwinkel","Fisheye","Teleobjektiv","Makro","Tilt-Shift",
+  // Kamerabewegungen & Einstellungsgrößen
+  "Totale","Halbtotale","Amerikanische Einstellung","Halbnahe","Große Nah","Detailaufnahme","POV-Perspektive",
+  // Besondere Techniken
+  "Aerial Drohne","Tiefenschärfe","Langzeitbelichtung","Slow Motion","Spiegelbild","Silhouette"
+];
 const COLOR_GRADES = ["Warm & Satt","Kalt & Blau","Entsättigt","High Contrast","Pastell","Monochrom","Vintage","Teal & Orange"];
 
 const TABS = { SINGLE: "single", STORY: "story" };
