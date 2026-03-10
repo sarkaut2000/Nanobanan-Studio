@@ -25,10 +25,18 @@ const COLOR_GRADES = ["Warm & Satt","Kalt & Blau","Entsättigt","High Contrast",
 
 const TABS = { SINGLE: "single", STORY: "story" };
 
+const API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY || "";
+
 async function callClaude(system, user, maxTokens = 1500) {
+  if (!API_KEY) throw new Error("Kein API-Key konfiguriert. Bitte VITE_ANTHROPIC_API_KEY in .env setzen.");
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": API_KEY,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true"
+    },
     body: JSON.stringify({
       model: "claude-sonnet-4-20250514",
       max_tokens: maxTokens,
@@ -36,6 +44,10 @@ async function callClaude(system, user, maxTokens = 1500) {
       messages: [{ role: "user", content: user }]
     })
   });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error?.message || `API Fehler ${res.status}`);
+  }
   const data = await res.json();
   return data.content?.map(b => b.text || "").join("") || "";
 }
